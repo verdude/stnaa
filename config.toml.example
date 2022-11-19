@@ -1,0 +1,11 @@
+[[people]]
+name = "bob"
+phone = "1231231234"
+
+[[people]]
+name = "alice"
+phone = "1231231234"
+
+[deets]
+message = "haha"
+greeting = "yo"
