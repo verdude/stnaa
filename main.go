@@ -1,11 +1,14 @@
 package main
 
 import (
+  twilioApi "github.com/twilio/twilio-go/rest/api/v2010"
   "github.com/pelletier/go-toml/v2"
-  "log"
+  "github.com/twilio/twilio-go"
   "math/rand"
-  "os"
   "time"
+  "log"
+  "fmt"
+  "os"
 )
 
 var config string
@@ -18,6 +21,9 @@ type Person struct {
 type Details struct {
   Message  string
   Greeting string
+  TwilioSid string
+  TwilioToken string
+  TwilioNumber string
 }
 
 type Config struct {
@@ -41,6 +47,21 @@ func parse_config() Config {
     log.Fatal("Failed to parse config into toml: ", e)
   }
   return conf
+}
+
+func sendSMS(client *twilio.RestClient, config Config, match Match) {
+  params := &twilioApi.CreateMessageParams{}
+  params.SetTo("+1" + match.Person.Phone)
+  params.SetFrom(config.Deets.TwilioNumber)
+  msg := fmt.Sprintf(
+    "%s %s. %s %s.",
+    config.Deets.Greeting,
+    match.Person.Name,
+    config.Deets.Message,
+    match.Match.Name)
+  params.SetBody(msg)
+
+  log.Println(msg)
 }
 
 func tryMatch(people []Person) []Match {
@@ -71,6 +92,13 @@ func tryMatch(people []Person) []Match {
   return matches
 }
 
+func getTwilioClient(config Config) *twilio.RestClient {
+  return twilio.NewRestClientWithParams(twilio.ClientParams{
+    Username: config.Deets.TwilioSid,
+    Password: config.Deets.TwilioToken,
+  })
+}
+
 func main() {
   rand.Seed(time.Now().UnixNano())
   config := parse_config()
@@ -84,7 +112,8 @@ func main() {
     log.Println("trying again...")
   }
 
+  client := getTwilioClient(config)
   for _, v := range mixed {
-    log.Println(v.Person.Name, "got", v.Match.Name)
+    sendSMS(client, config, v)
   }
 }
