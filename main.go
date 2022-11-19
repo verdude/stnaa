@@ -2,32 +2,32 @@ package main
 
 import (
   "github.com/pelletier/go-toml/v2"
-  "math/rand"
-  "time"
   "log"
+  "math/rand"
   "os"
+  "time"
 )
 
 var config string
 
 type Person struct {
-  Name string
+  Name  string
   Phone string
 }
 
 type Details struct {
-  Message string
+  Message  string
   Greeting string
 }
 
 type Config struct {
   People []Person
-  Deets Details
+  Deets  Details
 }
 
 type Match struct {
   Person Person
-  Match Person
+  Match  Person
 }
 
 func parse_config() Config {
@@ -48,15 +48,25 @@ func tryMatch(people []Person) []Match {
   list := rand.Perm(n)
   matches := make([]Match, n)
   for i := 0; i < n; i++ {
+    currentPerson := people[i]
+    matchedPerson := people[list[i]]
     if i == list[i] {
-      log.Println("Unfortunately,", people[i].Name, "got", people[i].Name)
+      log.Println(
+        "Unfortunately,",
+        currentPerson.Name,
+        "got", currentPerson.Name)
       return nil
     }
-    if list[i] < i && matches[list[i]].Match.Name == people[i].Name {
-      log.Println("Unfortunately,", people[i].Name, "got", people[list[i]].Name, "but", people[list[i]].Name, "matched with", people[i].Name, "which is a cycle and is not allowed")
+    if list[i] < i && matches[list[i]].Match.Name == currentPerson.Name {
+      log.Println("Unfortunately,",
+        currentPerson.Name,
+        "got", matchedPerson.Name,
+        "but", matchedPerson.Name,
+        "matched with", currentPerson.Name,
+        "which is a cycle and is not allowed")
       return nil
     }
-    matches[i] = Match{ Person: people[i], Match: people[list[i]] }
+    matches[i] = Match{Person: currentPerson, Match: matchedPerson}
   }
   return matches
 }
@@ -74,5 +84,7 @@ func main() {
     log.Println("trying again...")
   }
 
-  log.Println(mixed)
+  for _, v := range mixed {
+    log.Println(v.Person.Name, "got", v.Match.Name)
+  }
 }
