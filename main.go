@@ -60,8 +60,15 @@ func sendSMS(client *twilio.RestClient, config Config, match Match) {
     config.Deets.Message,
     match.Match.Name)
   params.SetBody(msg)
-
   log.Println(msg)
+
+  resp, err := client.Api.CreateMessage(params)
+  if err != nil {
+    log.Println(err.Error())
+  } else {
+    response, _ := json.Marshal(*resp)
+    log.Println("Response:", response)
+  }
 }
 
 func tryMatch(people []Person) []Match {
@@ -113,7 +120,10 @@ func main() {
   }
 
   client := getTwilioClient(config)
+  var group sync.WaitGroup
   for _, v := range mixed {
-    sendSMS(client, config, v)
+    group.Add(1)
+    go sendSMS(client, config, v)
   }
+  group.Wait()
 }
