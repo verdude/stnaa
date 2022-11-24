@@ -6,7 +6,6 @@ import (
   "github.com/twilio/twilio-go"
   "math/rand"
   "encoding/json"
-  "sync"
   "time"
   "log"
   "fmt"
@@ -38,6 +37,11 @@ type Match struct {
   Match  Person
 }
 
+type SMSResult struct {
+  Match Match
+  Error error
+}
+
 func parse_config() Config {
   bytes, err := os.ReadFile(config)
   if err != nil {
@@ -51,7 +55,7 @@ func parse_config() Config {
   return conf
 }
 
-func sendSMS(client *twilio.RestClient, config Config, match Match) {
+func sendSMS(client *twilio.RestClient, config Config, match Match, resChan chan SMSResult) {
   params := &twilioApi.CreateMessageParams{}
   params.SetTo("+1" + match.Person.Phone)
   params.SetFrom(config.Deets.TwilioNumber)
@@ -64,12 +68,15 @@ func sendSMS(client *twilio.RestClient, config Config, match Match) {
   params.SetBody(msg)
   log.Println(msg)
 
+  result := SMSResult{match, nil}
   resp, err := client.Api.CreateMessage(params)
   if err != nil {
-    log.Println(err.Error())
+    result.Error = err
+    resChan <- result
   } else {
     response, _ := json.Marshal(*resp)
     log.Println("Response:", response)
+    resChan <- result
   }
 }
 
@@ -113,6 +120,11 @@ func main() {
   config := parse_config()
   var mixed []Match
 
+  if len(config.People) <= 2 {
+    log.Println("Big Epic failure. Need more people.")
+    return
+  }
+
   for {
     mixed = tryMatch(config.People)
     if mixed != nil {
@@ -121,11 +133,17 @@ func main() {
     log.Println("trying again...")
   }
 
+  resultChan := make(chan SMSResult)
+
   client := getTwilioClient(config)
-  var group sync.WaitGroup
   for _, v := range mixed {
-    group.Add(1)
-    go sendSMS(client, config, v)
+    go sendSMS(client, config, v, resultChan)
   }
-  group.Wait()
+
+  length := len(mixed)
+  for i := 0; i < length; i++ {
+    if result := <-resultChan; result.Error != nil {
+      log.Println("Error", result.Match)
+    }
+  }
 }
