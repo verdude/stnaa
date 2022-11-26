@@ -149,10 +149,16 @@ func main() {
 
   length := len(mixed)
   failures := make([]SMSResult, 0)
+  completeFailure := false
   for i := 0; i < length; i++ {
     if result := <-resultChan; result.Error != nil {
       failures = append(failures, result)
+    } else {
+      completeFailure = true
     }
   }
-  saveFailures(failures)
+
+  if !completeFailure {
+    saveFailures(failures)
+  }
 }
