@@ -66,7 +66,6 @@ func sendSMS(client *twilio.RestClient, config Config, match Match, resChan chan
     config.Deets.Message,
     match.Match.Name)
   params.SetBody(msg)
-  log.Println(msg)
 
   result := SMSResult{match, nil}
   resp, err := client.Api.CreateMessage(params)
@@ -115,14 +114,23 @@ func getTwilioClient(config Config) *twilio.RestClient {
   })
 }
 
+func saveFailures(failures []SMSResult) {
+  if len(failures) > 0 {
+    data, _ := json.Marshal(failures)
+    err := os.WriteFile("failures.txt", []byte(data), 0664)
+    if err != nil {
+      log.Fatal("oh my word")
+    }
+  }
+}
+
 func main() {
   rand.Seed(time.Now().UnixNano())
   config := parse_config()
   var mixed []Match
 
   if len(config.People) <= 2 {
-    log.Println("Big Epic failure. Need more people.")
-    return
+    log.Fatal("Big Epic failure. Need more people.")
   }
 
   for {
@@ -130,7 +138,6 @@ func main() {
     if mixed != nil {
       break
     }
-    log.Println("trying again...")
   }
 
   resultChan := make(chan SMSResult)
@@ -141,9 +148,11 @@ func main() {
   }
 
   length := len(mixed)
+  failures := make([]SMSResult, 0)
   for i := 0; i < length; i++ {
     if result := <-resultChan; result.Error != nil {
-      log.Println("Error", result.Match)
+      failures = append(failures, result)
     }
   }
+  saveFailures(failures)
 }
