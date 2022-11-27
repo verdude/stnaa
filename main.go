@@ -57,7 +57,7 @@ func parse_config() Config {
 
 func sendSMS(client *twilio.RestClient, config Config, match Match, resChan chan SMSResult) {
   params := &twilioApi.CreateMessageParams{}
-  params.SetTo("+1" + match.Person.Phone)
+  params.SetTo(match.Person.Phone)
   params.SetFrom(config.Deets.TwilioNumber)
   msg := fmt.Sprintf(
     "%s %s. %s %s.",
@@ -121,6 +121,9 @@ func saveFailures(failures []SMSResult) {
     if err != nil {
       log.Fatal("oh my word")
     }
+    log.Fatal("Awful.")
+  } else {
+    log.Println("Succeeded to an extreme degree.")
   }
 }
 
@@ -149,16 +152,21 @@ func main() {
 
   length := len(mixed)
   failures := make([]SMSResult, 0)
-  completeFailure := false
+  completeFailure := true
   for i := 0; i < length; i++ {
     if result := <-resultChan; result.Error != nil {
+      log.Println("Failed Sending SMS to", result.Match.Person.Name)
       failures = append(failures, result)
     } else {
-      completeFailure = true
+      log.Println("Succeeded Sending SMS to", result.Match.Person.Name)
+      completeFailure = false
     }
   }
 
   if !completeFailure {
     saveFailures(failures)
+  } else {
+    log.Println("CompleteFailure")
+    log.Println(failures)
   }
 }
